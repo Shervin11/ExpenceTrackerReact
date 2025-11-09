@@ -1,10 +1,19 @@
 FROM node:lts-alpine
-ENV NODE_ENV=production
+
+# Не ставим NODE_ENV=production, иначе npm install пропустит devDependencies
 WORKDIR /usr/src/app
-COPY ["package.json", "package-lock.json*", "npm-shrinkwrap.json*", "./"]
-RUN npm install --production --silent && mv node_modules ../
+
+# Копируем package.json и package-lock.json
+COPY package*.json ./
+
+# Устанавливаем ВСЕ зависимости (devDependencies тоже)
+RUN npm install
+
+# Копируем исходники проекта
 COPY . .
-EXPOSE 3000
-RUN chown -R node /usr/src/app
-USER node
+
+# Открываем порт Vite (по умолчанию 5173)
+EXPOSE 5173
+
+# Запуск dev-сервера
 CMD ["npm", "run", "dev"]
