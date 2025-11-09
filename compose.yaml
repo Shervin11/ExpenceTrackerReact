@@ -5,6 +5,7 @@ networks:
 services:
   myapp:
     image: romansakh14/expense_tracker_react:latest
+    container_name: expense_tracker_react
     build:
       context: .
       dockerfile: ./Dockerfile
