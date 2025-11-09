@@ -1,207 +1,228 @@
-import React, { useState, useEffect } from "react";
-import { Plus, Search, TrendingUp, TrendingDown, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import type { AppDispatch, RootState } from "../../store/store";
-import { fetchAccount } from "../../features/accountSlice/accountSlice";
+import { useNavigate } from "react-router-dom";
 import {
-  getTransactions,
-  addTransaction,
-} from "../../features/transactionSlice/transactionSlice";
-import type { CreateTransactionDto } from "../../features/transactionSlice/transactionSlice";
+  fetchAccounts,
+  createAccount,
+  getCurrency,
+  setCurrentAccount,
+  deleteAccount,
+} from "../../features/accountSlice/accountSlice";
+import type { AppDispatch, RootState } from "../../store/store";
+import { MoreHorizontal } from "lucide-react";
+
+interface Currency {
+  id: number;
+  name: string;
+}
 
 export default function Home() {
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useSelector((state: RootState) => state.account);
-  const { transactions, loading: txLoading } = useSelector(
-    (state: RootState) => state.transaction
-  );
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
 
-  const [form, setForm] = useState<CreateTransactionDto>({
-    name: "",
-    amount: 0,
-    currencyId: 1, // RUB — уточните у бэкенда
-    description: "",
-    transactionTypeId: 2, // 2 = расход (уточните: 1 — доход, 2 — расход)
-    date: new Date().toISOString(),
-    categoryId: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  });
+  const { user, accounts, loading } = useSelector(
+    (state: RootState) => state.account
+  );
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [accountName, setAccountName] = useState("");
+  const [accountBalance, setAccountBalance] = useState(0);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [selectedCurrencyId, setSelectedCurrencyId] = useState<number>(1);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    dispatch(fetchAccount());
-    dispatch(getTransactions());
+    dispatch(fetchAccounts());
   }, [dispatch]);
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name || form.amount <= 0) return;
-    await dispatch(addTransaction(form));
-    setIsModalOpen(false);
-    setForm({
-      ...form,
-      name: "",
-      amount: 0,
-      description: "",
-    });
+  const openModal = async () => {
+    setIsModalOpen(true);
+    const result = await dispatch(getCurrency());
+    if (getCurrency.fulfilled.match(result)) {
+      setCurrencies(result.payload);
+      if (result.payload.length > 0) {
+        setSelectedCurrencyId(result.payload[0].id);
+      }
+    }
   };
 
-  const totalIncome = transactions
-    .filter((t) => t.transactionTypeId === 1)
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalExpense = transactions
-    .filter((t) => t.transactionTypeId === 2)
-    .reduce((sum, t) => sum + t.amount, 0);
-  const balance = totalIncome - totalExpense;
+  const handleCreateAccount = async () => {
+    if (!accountName.trim()) return;
+    await dispatch(
+      createAccount({
+        name: accountName,
+        balance: accountBalance,
+        currencyId: selectedCurrencyId,
+        isDefault: false,
+      })
+    );
+    await dispatch(fetchAccounts());
+    setAccountName("");
+    setAccountBalance(0);
+    setIsModalOpen(false);
+  };
+
+  const handleSelectAccount = (accountId: string) => {
+    dispatch(setCurrentAccount(accountId));
+    navigate("/transactions");
+  };
+
+  const toggleMenu = (e: React.MouseEvent, accountId: string) => {
+    e.stopPropagation();
+    setOpenMenuId(openMenuId === accountId ? null : accountId);
+  };
+
+  const handleEdit = (accountId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenMenuId(null);
+  };
+
+  const handleDelete = async (accountId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    dispatch(deleteAccount(accountId));
+    await dispatch(fetchAccounts());
+    setOpenMenuId(null);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
-    <div className="fixed inset-0 bg-gray-50 overflow-hidden flex flex-col">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 pb-6">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 py-5 flex justify-between items-center">
           <div>
-            <h1 className="text-xl font-bold text-gray-800">
-              Привет, {user?.firstName || "Пользователь"}!
+            <h1 className="text-xl font-semibold text-gray-900">
+              {user ? `Счета ${user.firstName}` : "Мои счета"}
             </h1>
-            <p className="text-sm text-gray-500">Ваши транзакции</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Управляйте своими финансами
+            </p>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200">
-              <Search size={18} />
-            </button>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="p-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-700"
-            >
-              <Plus size={18} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-4xl mx-auto px-4 pt-6 pb-4">
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-gray-500">Баланс</p>
-              <p className="text-2xl font-bold text-gray-800">
-                ₽ {balance.toLocaleString()}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <div className="flex items-center gap-1 text-green-600">
-                <TrendingUp size={16} />
-                <span className="text-sm">+{totalIncome.toLocaleString()}</span>
-              </div>
-              <div className="flex items-center gap-1 text-rose-600">
-                <TrendingDown size={16} />
-                <span className="text-sm">
-                  -{totalExpense.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </div>
+          <button
+            onClick={openModal}
+            className="w-9 h-9 rounded-full bg-indigo-600 flex font-semibold text-lg items-center justify-center text-white hover:bg-indigo-700 transition-colors shadow-sm"
+            aria-label="Создать счёт"
+          >
+            +
+          </button>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 pb-6 flex-1 overflow-y-auto">
-        {txLoading ? (
-          <div className="text-center py-8 text-gray-500">Загрузка...</div>
-        ) : transactions.length > 0 ? (
-          transactions.map((tx) => (
-            <div
-              key={tx.id}
-              className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 mb-3"
-            >
-              <div className="flex justify-between">
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        {loading ? (
+          <div className="text-center py-10 text-gray-500">Загрузка...</div>
+        ) : accounts.length === 0 ? (
+          <div className="text-center py-16 text-gray-500">
+            <div className="text-5xl mb-4">💳</div>
+            <p className="text-lg font-medium">Нет счетов</p>
+            <p className="mt-1 text-gray-400">Создайте первый счёт</p>
+          </div>
+        ) : (
+          <div className="space-y-4 grid grid-cols-1 md:grid-cols-3 gap-2">
+            {accounts.map((acc) => (
+              <div
+                key={acc.id}
+                onClick={() => handleSelectAccount(acc.id)}
+                className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow h-full relative"
+              >
+                <button
+                  onClick={(e) => toggleMenu(e, acc.id)}
+                  className="absolute top-3 right-3 cursor-pointer opacity-100 w-7 h-7 rounded-full flex items-center justify-center bg-gray-100 transition-opacity"
+                  aria-label="Меню счёта"
+                >
+                  <MoreHorizontal size={16} className="text-gray-500" />
+                </button>
+
+                {openMenuId === acc.id && (
+                  <div
+                    ref={menuRef}
+                    className="absolute top-10 right-3 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 w-44"
+                  >
+                    <button
+                      onClick={(e) => handleEdit(acc.id, e)}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
+                    >
+                      Редактировать
+                    </button>
+                    <button
+                      onClick={(e) => handleDelete(acc.id, e)}
+                      className="block w-full text-left px-4 py-2 text-sm text-rose-600 cursor-pointer hover:bg-gray-50"
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                )}
+
                 <div>
-                  <p className="font-medium text-gray-800">{tx.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {tx.description || tx.categoryId} •{" "}
-                    {new Date(tx.date).toLocaleDateString()}
+                  <h2 className="font-semibold text-xl text-gray-900 truncate">
+                    {acc.name || "Без названия"}
+                  </h2>
+                  <p className="text-xl font-bold text-gray-800 mt-2">
+                    {acc.currency.name} {(acc.balance ?? 0).toLocaleString()}
                   </p>
                 </div>
-                <p
-                  className={`font-semibold ${
-                    tx.transactionTypeId === 1
-                      ? "text-green-600"
-                      : "text-rose-600"
-                  }`}
-                >
-                  {tx.transactionTypeId === 1 ? "+" : "–"} ₽{" "}
-                  {tx.amount.toLocaleString()}
-                </p>
               </div>
-            </div>
-          ))
-        ) : (
-          <div className="text-center py-8 text-gray-500">Нет транзакций</div>
+            ))}
+          </div>
         )}
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-[#3f343436] bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 relative">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+        <div className="fixed inset-0 bg-[#3f343436] bg-opacity-40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl w-full max-w-sm space-y-2 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Новый счёт
+            </h2>
+            <input
+              value={accountName}
+              onChange={(e) => setAccountName(e.target.value)}
+              placeholder="Название счёта"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              autoFocus
+            />
+            <input
+              value={accountBalance}
+              onChange={(e) => setAccountBalance(e.target.valueAsNumber)}
+              placeholder="Баланс счёта"
+              type="number"
+              step="0.01"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <select
+              value={selectedCurrencyId}
+              onChange={(e) => setSelectedCurrencyId(Number(e.target.value))}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <X size={20} />
-            </button>
-            <h2 className="text-xl font-bold mb-4">Новая транзакция</h2>
-            <form onSubmit={handleAdd} className="space-y-4">
-              <input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Название"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                required
-              />
-              <input
-                type="number"
-                value={form.amount || ""}
-                onChange={(e) =>
-                  setForm({ ...form, amount: Number(e.target.value) })
-                }
-                placeholder="Сумма"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                required
-                min="0.01"
-                step="0.01"
-              />
-              <input
-                value={form.description}
-                onChange={(e) =>
-                  setForm({ ...form, description: e.target.value })
-                }
-                placeholder="Описание (опционально)"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              />
-              <div className="flex gap-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    checked={form.transactionTypeId === 1}
-                    onChange={() => setForm({ ...form, transactionTypeId: 1 })}
-                    className="mr-2"
-                  />
-                  Доход
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    checked={form.transactionTypeId === 2}
-                    onChange={() => setForm({ ...form, transactionTypeId: 2 })}
-                    className="mr-2"
-                  />
-                  Расход
-                </label>
-              </div>
+              {currencies.map((curr) => (
+                <option key={curr.id} value={curr.id}>
+                  {curr.name}
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-2 mt-5">
               <button
-                type="submit"
-                className="w-full py-2.5 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                onClick={handleCreateAccount}
+                disabled={!accountName.trim()}
+                className="flex-1 py-2.5 rounded-lg bg-indigo-600 text-white font-medium disabled:opacity-60 hover:bg-indigo-700"
               >
-                Добавить
+                Создать
               </button>
-            </form>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="flex-1 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
+              >
+                Отмена
+              </button>
+            </div>
           </div>
         </div>
       )}
