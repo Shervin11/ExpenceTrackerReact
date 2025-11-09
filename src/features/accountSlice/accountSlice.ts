@@ -124,7 +124,9 @@ export const createAccount = createAsyncThunk<
   try {
     const accessToken = (getState() as RootState).auth.accessToken;
 
-    const currencyRes = await axios.get<CurrencyListResponse>(ENUM_URL);
+    const currencyRes = await axios.get<CurrencyListResponse>(ENUM_URL, {
+      headers: { Authorization: accessToken },
+    });
     const currencies = currencyRes.data.data[0] || [];
     const selectedCurrency = currencies.find(
       (c) => c.id === dto.currencyId
@@ -135,7 +137,6 @@ export const createAccount = createAsyncThunk<
     });
 
     const acc = res.data.data?.[0]?.[0];
-
     return {
       id: acc?.id || crypto.randomUUID(),
       name: acc?.name || dto.name,
