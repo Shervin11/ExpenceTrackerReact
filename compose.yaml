@@ -1,0 +1,16 @@
+networks:
+  nginxproxy_default:
+    external: true
+
+services:
+  myapp:
+    image: romansakh14/expense_tracker_react:latest
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      NODE_ENV: production
+    networks:
+      - nginxproxy_default
+    ports:
+      - 3000:3000
