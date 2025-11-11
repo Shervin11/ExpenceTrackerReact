@@ -84,7 +84,9 @@ export const editAccount = createAsyncThunk<
 >("account/editAccount", async (dto, { rejectWithValue }) => {
   try {
     const res = await api.put(`/Account/edit-account`, dto);
-    return res.data.data?.[0]?.[0];
+    const acc = res.data.data?.[0]?.[0];
+    if (!acc) throw new Error("Нет данных");
+    return acc;
   } catch {
     return rejectWithValue("Ошибка обновления счёта");
   }
@@ -138,6 +140,7 @@ const accountSlice = createSlice({
         state.accounts.push(action.payload);
       })
       .addCase(editAccount.fulfilled, (state, action) => {
+        if (!action.payload || !action.payload.id) return;
         const idx = state.accounts.findIndex((a) => a.id === action.payload.id);
         if (idx !== -1) state.accounts[idx] = action.payload;
       })
