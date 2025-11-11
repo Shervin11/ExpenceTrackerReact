@@ -30,18 +30,27 @@ api.interceptors.response.use(
 
     const refreshToken = localStorage.getItem("refreshToken");
     if (!refreshToken) {
-      throw new Error("No refresh token");
+      window.location.href = "/login";
     }
 
-    const res = await axios.post(
-      "http://52.221.219.64/api/Auth/refresh-token",
-      refreshToken,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const res = await axios
+      .post(
+        `https://tracker-api.ddns.net/api/Auth/refresh-token`,
+        refreshToken,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+      .catch(() => {
+        localStorage.clear();
+        window.location.href = "/login";
+      });
+
+    if (!res) {
+      return Promise.reject(error);
+    }
 
     const newAccessToken = res.data.data?.[0]?.accessToken;
     const newRefreshToken = res.data.data?.[0]?.refreshToken;

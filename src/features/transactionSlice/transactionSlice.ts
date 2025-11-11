@@ -4,22 +4,22 @@ import api from "../../components/hooks/apiClient";
 export interface CreateTransactionDto {
   name: string;
   amount: number;
-  currencyId: number;
   description: string;
   transactionTypeId: number;
   date: string;
-  categoryId: string;
+  categoryId: null;
 }
 
 export interface Transaction {
   id: string;
   name: string;
   amount: number;
-  currencyId: number;
-  description: string;
-  transactionTypeId: number;
+  currency: { id: number; name: string };
+  description: string | null;
   date: string;
-  categoryId: string;
+  categoryId: null;
+  categoryName?: string | null;
+  type: { id: number; name: string };
 }
 
 interface TransactionState {
@@ -41,10 +41,68 @@ export const getTransactions = createAsyncThunk<
 >("transaction/getTransactions", async (_, { rejectWithValue }) => {
   try {
     const { data } = await api.get("/Transaction/get-all-account-transactions");
-
-    return data.data[0].items;
-  } catch (err) {
+    return data.data?.[0]?.items ?? [];
+  } catch {
     return rejectWithValue("Ошибка сети");
+  }
+});
+
+export const filterTransactions = createAsyncThunk<
+  Transaction[],
+  {
+    Name?: string;
+    AmountFrom?: number;
+    AmountTo?: number;
+    DateFrom?: string;
+    DateTo?: string;
+  },
+  { rejectValue: string }
+>("transaction/filterTransactions", async (filters, { rejectWithValue }) => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.Name) params.append("Name", filters.Name);
+    if (filters.AmountFrom)
+      params.append("AmountFrom", filters.AmountFrom.toString());
+    if (filters.AmountTo)
+      params.append("AmountTo", filters.AmountTo.toString());
+    if (filters.DateFrom) params.append("DateFrom", filters.DateFrom);
+    if (filters.DateTo) params.append("DateTo", filters.DateTo);
+
+    const res = await api.get(
+      `/Transaction/get-all-account-transactions?${params.toString()}`
+    );
+
+    return res.data.data?.[0]?.items ?? [];
+  } catch {
+    return rejectWithValue("Ошибка при фильтрации транзакций");
+  }
+});
+
+export const deleteTransactions = createAsyncThunk<
+  string[],
+  string[],
+  { rejectValue: string }
+>("transaction/deleteTransactions", async (ids, { rejectWithValue }) => {
+  try {
+    await api.delete("/Transaction/delete-transactions", {
+      data: { ids },
+    });
+    return ids;
+  } catch {
+    return rejectWithValue("Ошибка удаления транзакций");
+  }
+});
+
+export const editTransaction = createAsyncThunk<
+  Transaction,
+  { id: string; name: string; categoryId: null; description: string },
+  { rejectValue: string }
+>("transaction/editTransaction", async (dto, { rejectWithValue }) => {
+  try {
+    const res = await api.put("/Transaction/edit-transaction", dto);
+    return res.data.data?.[0]?.[0];
+  } catch {
+    return rejectWithValue("Ошибка редактирования транзакции");
   }
 });
 
@@ -81,6 +139,21 @@ const transactionSlice = createSlice({
       })
       .addCase(addTransaction.fulfilled, (state, action) => {
         state.transactions.unshift(action.payload);
+      })
+      .addCase(deleteTransactions.fulfilled, (state, action) => {
+        state.transactions = state.transactions.filter(
+          (t) => !action.payload.includes(t.id)
+        );
+      })
+      .addCase(filterTransactions.fulfilled, (state, action) => {
+        state.loading = false;
+        state.transactions = action.payload;
+      })
+      .addCase(editTransaction.fulfilled, (state, action) => {
+        const updated = action.payload;
+        if (!updated) return;
+        const idx = state.transactions.findIndex((t) => t.id === updated.id);
+        if (idx !== -1) state.transactions[idx] = updated;
       });
   },
 });

@@ -56,8 +56,20 @@ export default function Home() {
     }
   };
 
-  const handleSelectAccount = (id: string) => {
+  const handleSelectAccount = async (id: string) => {
+    const acc = accounts.find((a) => a.id === id);
+    if (!acc) return;
+
     dispatch(setCurrentAccount(id));
+
+    await dispatch(
+      editAccount({
+        id: acc.id,
+        name: acc.name,
+        isDefault: true,
+      })
+    ).unwrap();
+
     navigate(`/transactions/${id}`);
   };
 
@@ -204,7 +216,7 @@ export default function Home() {
                       e.stopPropagation();
                       setOpenMenuId(openMenuId === acc.id ? null : acc.id);
                     }}
-                    className="absolute top-3 right-3 w-7 h-7 cursor-pointer rounded-full flex items-center justify-center bg-gray-100"
+                    className="absolute top-3 right-3 w-7 h-7 cursor-pointer flex items-center justify-center p-2 rounded-full hover:bg-gray-100 text-gray-500"
                   >
                     <MoreHorizontal size={16} className="text-gray-500" />
                   </button>
