@@ -1,4 +1,8 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit";
+import {
+  createSlice,
+  createAsyncThunk,
+  type PayloadAction,
+} from "@reduxjs/toolkit";
 import axios from "axios";
 
 const API_URL = "http://52.221.219.64/api/Auth/";
@@ -15,19 +19,10 @@ interface AuthResponse {
   errors: null;
 }
 
-interface AuthState {
-  accessToken: string;
-  refreshToken: string;
-}
-
-const initialState: AuthState = {
-  accessToken: localStorage.getItem("accessToken") || "",
-  refreshToken: localStorage.getItem("refreshToken") || "",
-};
-
 export const registerUser = createAsyncThunk<
   TokenData,
-  { firstName: string; lastName: string; email: string; password: string }
+  { firstName: string; lastName: string; email: string; password: string },
+  { rejectValue: string }
 >("auth/register", async (data, { rejectWithValue }) => {
   try {
     const res = await axios.post<AuthResponse>(`${API_URL}register`, data);
@@ -39,7 +34,8 @@ export const registerUser = createAsyncThunk<
 
 export const loginUser = createAsyncThunk<
   TokenData,
-  { email: string; password: string }
+  { email: string; password: string },
+  { rejectValue: string }
 >("auth/login", async (credentials, { rejectWithValue }) => {
   try {
     const res = await axios.post<AuthResponse>(`${API_URL}login`, credentials);
@@ -49,22 +45,62 @@ export const loginUser = createAsyncThunk<
   }
 });
 
+export const refreshAuth = createAsyncThunk<
+  { accessToken: string; refreshToken: string },
+  void,
+  { rejectValue: string }
+>("auth/refreshAuth", async (_, { rejectWithValue }) => {
+  const refreshToken = localStorage.getItem("refreshToken");
+  if (!refreshToken) {
+    return rejectWithValue("Нет refreshToken");
+  }
+
+  try {
+    const res = await axios.post<{ data: TokenData[] }>(
+      "http://52.221.219.64/api/Auth/refresh",
+      { refreshToken }
+    );
+    const newTokens = res.data.data?.[0];
+    if (!newTokens) {
+      throw new Error("Нет новых токенов");
+    }
+    return newTokens;
+  } catch (err) {
+    return rejectWithValue("Не удалось обновить сессию");
+  }
+});
+
+interface AuthState {
+  accessToken: string | null;
+  refreshToken: string | null;
+  isRefreshing: boolean;
+}
+
+const initialState: AuthState = {
+  accessToken: localStorage.getItem("accessToken"),
+  refreshToken: localStorage.getItem("refreshToken"),
+  isRefreshing: false,
+};
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    logout: (state) => {
-      state.accessToken = "";
-      state.refreshToken = "";
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-    },
     restoreTokens: (
       state,
       action: PayloadAction<{ accessToken: string; refreshToken: string }>
     ) => {
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken;
+      localStorage.setItem("accessToken", action.payload.accessToken);
+      localStorage.setItem("refreshToken", action.payload.refreshToken);
+    },
+    logout: (state) => {
+      state.accessToken = null;
+      state.refreshToken = null;
+      state.isRefreshing = false;
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
     },
   },
   extraReducers: (builder) => {
@@ -80,9 +116,22 @@ const authSlice = createSlice({
         state.refreshToken = action.payload.refreshToken;
         localStorage.setItem("accessToken", action.payload.accessToken);
         localStorage.setItem("refreshToken", action.payload.refreshToken);
+      })
+      .addCase(refreshAuth.pending, (state) => {
+        state.isRefreshing = true;
+      })
+      .addCase(refreshAuth.fulfilled, (state, action) => {
+        state.accessToken = action.payload.accessToken;
+        state.refreshToken = action.payload.refreshToken;
+        state.isRefreshing = false;
+        localStorage.setItem("accessToken", action.payload.accessToken);
+        localStorage.setItem("refreshToken", action.payload.refreshToken);
+      })
+      .addCase(refreshAuth.rejected, (state) => {
+        state.isRefreshing = false;
       });
   },
 });
 
-export const { logout, restoreTokens } = authSlice.actions;
+export const { restoreTokens, logout } = authSlice.actions;
 export default authSlice.reducer;

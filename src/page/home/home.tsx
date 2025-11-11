@@ -9,7 +9,8 @@ import {
   deleteAccount,
 } from "../../features/accountSlice/accountSlice";
 import type { AppDispatch, RootState } from "../../store/store";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, LogOut, Plus } from "lucide-react";
+// import { } from "lucide-react";
 
 interface Currency {
   id: number;
@@ -107,13 +108,24 @@ export default function Home() {
               Управляйте своими финансами
             </p>
           </div>
-          <button
-            onClick={openModal}
-            className="w-9 h-9 rounded-full bg-indigo-600 flex font-semibold text-lg items-center justify-center text-white hover:bg-indigo-700 transition-colors shadow-sm"
-            aria-label="Создать счёт"
-          >
-            +
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={openModal}
+              className="w-9 h-9 rounded-full cursor-pointer bg-indigo-600 flex font-semibold items-center justify-center text-white hover:bg-indigo-700 transition-colors shadow-sm"
+            >
+              <Plus size={20} />
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem("accessToken");
+                localStorage.removeItem("refreshToken");
+                navigate("/login");
+              }}
+              className="w-9 h-9 rounded-full cursor-pointer bg-gray-200 flex font-semibold items-center justify-center text-white hover:bg-indigo-700 transition-colors shadow-sm"
+            >
+              <LogOut size={20} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -132,7 +144,7 @@ export default function Home() {
               <div
                 key={acc.id}
                 onClick={() => handleSelectAccount(acc.id)}
-                className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow h-full relative"
+                className="bg-white rounded-xl p-5 shadow-sm m-0 border border-gray-200 cursor-pointer hover:shadow-md transition-shadow h-full relative"
               >
                 <button
                   onClick={(e) => toggleMenu(e, acc.id)}

@@ -1,8 +1,9 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import axios from "axios";
-
-const API_URL = "http://52.221.219.64/api/Account";
-const ENUM_URL = "http://52.221.219.64/api/Enum/get-currency";
+import {
+  createAsyncThunk,
+  createSlice,
+  type PayloadAction,
+} from "@reduxjs/toolkit";
+import api from "../../components/hooks/apiClient";
 
 export interface User {
   id: string;
@@ -68,12 +69,11 @@ export const fetchAccounts = createAsyncThunk<
 >("account/fetchAccounts", async (_, { rejectWithValue, getState }) => {
   try {
     const accessToken = (getState() as RootState).auth.accessToken;
-
-    const res = await axios.get<AccountListResponse>(
-      `${API_URL}/get-user-accounts`,
-      {
-        headers: { Authorization: accessToken },
-      }
+    if (!accessToken) {
+      return rejectWithValue("Токен отсутствует");
+    }
+    const res = await api.get<AccountListResponse>(
+      `/Account/get-user-accounts`
     );
     return res.data.data[0] || [];
   } catch (error) {
@@ -88,11 +88,10 @@ export const deleteAccount = createAsyncThunk<
 >("account/deleteAccount", async (id, { rejectWithValue, getState }) => {
   try {
     const accessToken = (getState() as RootState).auth.accessToken;
-
-    await axios.delete(`${API_URL}/delete-account`, {
-      headers: { Authorization: accessToken },
-      data: { id },
-    });
+    if (!accessToken) {
+      return rejectWithValue("Токен отсутствует");
+    }
+    await api.delete(`/Account/delete-account`, { data: { id } });
     return id;
   } catch (error) {
     return rejectWithValue("Сетевая ошибка");
@@ -103,13 +102,9 @@ export const getCurrency = createAsyncThunk<
   Currency[],
   void,
   { rejectValue: string }
->("account/getCurrency", async (_, { rejectWithValue, getState }) => {
+>("account/getCurrency", async (_, { rejectWithValue }) => {
   try {
-    const accessToken = (getState() as RootState).auth.accessToken;
-
-    const res = await axios.get<CurrencyListResponse>(ENUM_URL, {
-      headers: { Authorization: accessToken },
-    });
+    const res = await api.get<CurrencyListResponse>("Enum/get-currency");
     return res.data.data[0] || [];
   } catch (error) {
     return rejectWithValue("Неизвестная ошибка");
@@ -123,32 +118,24 @@ export const createAccount = createAsyncThunk<
 >("account/createAccount", async (dto, { rejectWithValue, getState }) => {
   try {
     const accessToken = (getState() as RootState).auth.accessToken;
+    if (!accessToken) {
+      return rejectWithValue("Токен отсутствует");
+    }
 
-    const currencyRes = await axios.get<CurrencyListResponse>(ENUM_URL, {
-      headers: { Authorization: accessToken },
-    });
-    const currencies = currencyRes.data.data[0] || [];
-    const selectedCurrency = currencies.find(
-      (c) => c.id === dto.currencyId
-    ) || { id: dto.currencyId, name: "Unknown" };
-
-    const res = await axios.post(`${API_URL}/create-account`, dto, {
-      headers: { Authorization: accessToken },
-    });
+    const res = await api.post(`Account/create-account`, dto);
 
     const acc = res.data.data?.[0]?.[0];
+    const currency = acc?.currency || { id: dto.currencyId, name: "Unknown" };
+
     return {
       id: acc?.id || crypto.randomUUID(),
       name: acc?.name || dto.name,
       balance: acc?.balance ?? dto.balance,
-      currency: acc?.currency || selectedCurrency,
+      currency,
       isDefault: acc?.isDefault ?? dto.isDefault,
       userId: acc?.userId || "",
     };
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      return rejectWithValue(error.response?.data?.message || "Ошибка сети");
-    }
     return rejectWithValue("Ошибка сети");
   }
 });
@@ -158,7 +145,7 @@ const accountSlice = createSlice({
   initialState,
   reducers: {
     clearAccount: () => initialState,
-    setCurrentAccount: (state, action) => {
+    setCurrentAccount: (state, action: PayloadAction<string>) => {
       state.currentAccountId = action.payload;
     },
   },
