@@ -8,6 +8,7 @@ import {
   setCurrentAccount,
   deleteAccount,
   editAccount,
+  type Account,
 } from "../../features/accountSlice/accountSlice";
 import type { AppDispatch, RootState } from "../../store/store";
 import { MoreHorizontal, LogOut, Plus } from "lucide-react";
@@ -156,50 +157,52 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {accounts.map((acc) => (
-              <div
-                key={acc.id}
-                onClick={() => handleSelectAccount(acc.id)}
-                className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md cursor-pointer relative"
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenMenuId(openMenuId === acc.id ? null : acc.id);
-                  }}
-                  className="absolute cursor-pointer top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center bg-gray-100"
+            {accounts
+              .filter((acc): acc is Account => !!acc)
+              .map((acc) => (
+                <div
+                  key={acc.id}
+                  onClick={() => handleSelectAccount(acc.id)}
+                  className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md cursor-pointer relative"
                 >
-                  <MoreHorizontal size={16} className="text-gray-500" />
-                </button>
-
-                {openMenuId === acc.id && (
-                  <div
-                    ref={menuRef}
-                    className="absolute top-10 right-3 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 w-40"
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenMenuId(openMenuId === acc.id ? null : acc.id);
+                    }}
+                    className="absolute cursor-pointer top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center bg-gray-100"
                   >
-                    <button
-                      onClick={(e) => handleEdit(acc.id, e)}
-                      className="block w-full cursor-pointer text-left px-4 py-2 text-sm hover:bg-gray-50"
-                    >
-                      Редактировать
-                    </button>
-                    <button
-                      onClick={(e) => handleDelete(acc.id, e)}
-                      className="block w-full text-left cursor-pointer px-4 py-2 text-sm text-rose-600 hover:bg-gray-50"
-                    >
-                      Удалить
-                    </button>
-                  </div>
-                )}
+                    <MoreHorizontal size={16} className="text-gray-500" />
+                  </button>
 
-                <h2 className="font-semibold text-xl text-gray-900 truncate">
-                  {acc.name || "Без названия"}
-                </h2>
-                <p className="text-xl font-bold text-gray-800 mt-2">
-                  {acc.currency.name} {formatBalance(acc.balance)}
-                </p>
-              </div>
-            ))}
+                  {openMenuId === acc.id && (
+                    <div
+                      ref={menuRef}
+                      className="absolute top-10 right-3 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 w-40"
+                    >
+                      <button
+                        onClick={(e) => handleEdit(acc.id, e)}
+                        className="block w-full cursor-pointer text-left px-4 py-2 text-sm hover:bg-gray-50"
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        onClick={(e) => handleDelete(acc.id, e)}
+                        className="block w-full text-left cursor-pointer px-4 py-2 text-sm text-rose-600 hover:bg-gray-50"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  )}
+
+                  <h2 className="font-semibold text-xl text-gray-900 truncate">
+                    {acc.name || "Без названия"}
+                  </h2>
+                  <p className="text-xl font-bold text-gray-800 mt-2">
+                    {acc.currency.name} {formatBalance(acc.balance)}
+                  </p>
+                </div>
+              ))}
           </div>
         )}
       </div>
@@ -230,7 +233,7 @@ export default function Home() {
             <select
               value={selectedCurrencyId}
               onChange={(e) => setSelectedCurrencyId(Number(e.target.value))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 mb-4 focus:ring-2 focus:ring-indigo-500"
+              className="w-full border border-gray-300 outline-none rounded-lg px-3 py-2.5 mb-4 focus:ring-2 focus:ring-indigo-500"
             >
               {currencies.map((curr) => (
                 <option key={curr.id} value={curr.id}>

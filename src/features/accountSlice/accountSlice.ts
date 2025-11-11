@@ -47,7 +47,8 @@ export const fetchAccounts = createAsyncThunk<
     if (!token) return rejectWithValue("Нет токена");
 
     const res = await api.get(`/Account/get-user-accounts`);
-    return res.data.data?.[0] || [];
+    const accounts = res.data.data?.[0] || [];
+    return accounts.filter((a: any): a is Account => !!a && !!a.id);
   } catch {
     return rejectWithValue("Ошибка загрузки счетов");
   }
@@ -64,14 +65,8 @@ export const createAccount = createAsyncThunk<
 
     const res = await api.post(`Account/create-account`, dto);
     const acc = res.data.data?.[0]?.[0];
-    return (
-      acc || {
-        ...dto,
-        id: crypto.randomUUID(),
-        currency: { id: dto.currencyId, name: "?" },
-        userId: "",
-      }
-    );
+
+    return acc;
   } catch {
     return rejectWithValue("Ошибка создания счёта");
   }
