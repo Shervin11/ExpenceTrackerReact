@@ -1,7 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import axios from "axios";
-
-const API_URL = "http://52.221.219.64/api/Transaction";
+import api from "../../components/hooks/apiClient";
 
 export interface CreateTransactionDto {
   name: string;
@@ -24,20 +22,6 @@ export interface Transaction {
   categoryId: string;
 }
 
-interface TransactionResponse {
-  statusCode: number;
-  message: string;
-  data: Transaction;
-  errors: null | unknown;
-}
-
-interface TransactionListResponse {
-  statusCode: number;
-  message: string;
-  data: Transaction[];
-  errors: null | unknown;
-}
-
 interface TransactionState {
   transactions: Transaction[];
   loading: boolean;
@@ -54,19 +38,12 @@ export const getTransactions = createAsyncThunk<
   Transaction[],
   void,
   { rejectValue: string }
->("transaction/getTransactions", async (_, { rejectWithValue, getState }) => {
+>("transaction/getTransactions", async (_, { rejectWithValue }) => {
   try {
-    const accessToken = (getState() as any).auth.accessToken;
-    const res = await axios.get<TransactionListResponse>(`${API_URL}/get-all`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    return res.data.data;
+    const { data } = await api.get("/Transaction/get-all-account-transactions");
+
+    return data.data[0].items;
   } catch (err) {
-    if (axios.isAxiosError(err)) {
-      return rejectWithValue(
-        err.response?.data?.message || "Не удалось загрузить транзакции"
-      );
-    }
     return rejectWithValue("Ошибка сети");
   }
 });
@@ -75,21 +52,11 @@ export const addTransaction = createAsyncThunk<
   Transaction,
   CreateTransactionDto,
   { rejectValue: string }
->("transaction/addTransaction", async (dto, { rejectWithValue, getState }) => {
+>("transaction/addTransaction", async (dto, { rejectWithValue }) => {
   try {
-    const accessToken = (getState() as any).auth.accessToken;
-    const res = await axios.post<TransactionResponse>(
-      `${API_URL}/create`,
-      dto,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
+    const res = await api.post("/Transaction/create-transaction", dto);
     return res.data.data;
   } catch (err) {
-    if (axios.isAxiosError(err)) {
-      return rejectWithValue(
-        err.response?.data?.message || "Не удалось добавить транзакцию"
-      );
-    }
     return rejectWithValue("Ошибка сети");
   }
 });

@@ -58,7 +58,7 @@ export default function Home() {
 
   const handleSelectAccount = (id: string) => {
     dispatch(setCurrentAccount(id));
-    navigate("/transactions");
+    navigate(`/transactions/${id}`);
   };
 
   const handleEdit = (id: string, e: React.MouseEvent) => {
@@ -127,7 +127,7 @@ export default function Home() {
       }
     };
     loadData();
-  }, [dispatch]);
+  }, []);
 
   useEffect(() => {
     const closeMenu = (e: MouseEvent) => {

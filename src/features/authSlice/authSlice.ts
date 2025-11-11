@@ -5,7 +5,7 @@ import {
 } from "@reduxjs/toolkit";
 import axios from "axios";
 
-const API_URL = "http://52.221.219.64/api/Auth/";
+const API_URL = "https://tracker-api.ddns.net/api/Auth/";
 
 interface TokenData {
   accessToken: string;

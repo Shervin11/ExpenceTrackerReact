@@ -5,11 +5,12 @@ import type { AppDispatch, RootState } from "../store/store";
 import Register from "../page/register/register";
 import Login from "../page/login/login";
 import Home from "../page/home/home";
+import Transaction from "../page/transaction/transaction";
 
 const App = () => {
   const token = useSelector((state: RootState) => state.auth.accessToken);
   const dispatch = useDispatch<AppDispatch>();
- 
+
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
     if (savedToken) {
@@ -23,6 +24,10 @@ const App = () => {
         <Route
           path="/home"
           element={token ? <Home /> : <Navigate to="/login" replace />}
+        />
+        <Route
+          path="/transactions/:accountId"
+          element={token ? <Transaction /> : <Navigate to="/login" replace />}
         />
 
         <Route path="/login" element={<Login />} />
