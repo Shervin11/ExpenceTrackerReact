@@ -83,6 +83,7 @@ export default function Home() {
           isDefault: false,
         })
       ).unwrap();
+      await dispatch(fetchAccounts()).unwrap();
       setAccountName("");
       setAccountBalance(0);
       setIsModalOpen(false);
@@ -96,6 +97,7 @@ export default function Home() {
     setIsLoading(true);
     try {
       await dispatch(editAccount({ ...editData, isDefault: false })).unwrap();
+      await dispatch(fetchAccounts()).unwrap();
       setIsEditModalOpen(false);
       setEditData(null);
     } finally {
@@ -252,10 +254,11 @@ export default function Home() {
             />
             <input
               value={accountBalance ? formatBalance(accountBalance) : ""}
-              onChange={(e) => {
-                const raw = e.target.value.replace(/\D/g, "");
-                setAccountBalance(raw ? Number(raw) : 0);
-              }}
+              onChange={(e) =>
+                setAccountBalance(
+                  Number(e.target.value.replace(/\D/g, "")) || 0
+                )
+              }
               placeholder="Баланс счёта"
               inputMode="numeric"
               className="w-full border border-gray-300 outline-none rounded-lg px-3 py-2.5 mb-3 focus:ring-2 focus:ring-indigo-500"

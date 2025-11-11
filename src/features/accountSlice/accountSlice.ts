@@ -80,7 +80,6 @@ export const editAccount = createAsyncThunk<
   try {
     const res = await api.put(`/Account/edit-account`, dto);
     const acc = res.data.data?.[0]?.[0];
-    if (!acc) throw new Error("Нет данных");
     return acc;
   } catch {
     return rejectWithValue("Ошибка обновления счёта");
