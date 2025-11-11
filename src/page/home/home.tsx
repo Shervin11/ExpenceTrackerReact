@@ -26,6 +26,7 @@ export default function Home() {
     (state: RootState) => state.account
   );
   const { user } = useSelector((state: RootState) => state.user);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [accountName, setAccountName] = useState("");
@@ -33,6 +34,7 @@ export default function Home() {
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [selectedCurrencyId, setSelectedCurrencyId] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [editData, setEditData] = useState<{ id: string; name: string } | null>(
     null
   );
@@ -43,30 +45,15 @@ export default function Home() {
     val ? val.toLocaleString("ru-RU").replace(/,/g, " ") : "0";
 
   const openModal = async () => {
-    setIsModalOpen(true);
-    const res = await dispatch(getCurrency());
-    if (getCurrency.fulfilled.match(res)) {
-      setCurrencies(res.payload);
-      setSelectedCurrencyId(res.payload[0]?.id ?? 1);
+    setIsLoading(true);
+    try {
+      setIsModalOpen(true);
+      const res = await dispatch(getCurrency()).unwrap();
+      setCurrencies(res);
+      setSelectedCurrencyId(res[0]?.id ?? 1);
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const handleCreateAccount = async () => {
-    if (!accountName.trim()) return;
-    if (accountBalance.toString().startsWith("0") && accountBalance !== 0)
-      return;
-    await dispatch(
-      createAccount({
-        name: accountName,
-        balance: accountBalance,
-        currencyId: selectedCurrencyId,
-        isDefault: false,
-      })
-    );
-    await dispatch(fetchAccounts());
-    setAccountName("");
-    setAccountBalance(0);
-    setIsModalOpen(false);
   };
 
   const handleSelectAccount = (id: string) => {
@@ -84,25 +71,61 @@ export default function Home() {
     setOpenMenuId(null);
   };
 
+  const handleCreateAccount = async () => {
+    if (!accountName.trim()) return;
+    setIsLoading(true);
+    try {
+      await dispatch(
+        createAccount({
+          name: accountName,
+          balance: accountBalance,
+          currencyId: selectedCurrencyId,
+          isDefault: false,
+        })
+      ).unwrap();
+      setAccountName("");
+      setAccountBalance(0);
+      setIsModalOpen(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleUpdateAccount = async () => {
     if (!editData?.name.trim()) return;
-    await dispatch(editAccount({ ...editData, isDefault: false }));
-    await dispatch(fetchAccounts());
-    setIsEditModalOpen(false);
-    setEditData(null);
+    setIsLoading(true);
+    try {
+      await dispatch(editAccount({ ...editData, isDefault: false })).unwrap();
+      setIsEditModalOpen(false);
+      setEditData(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await dispatch(deleteAccount(id));
-    await dispatch(fetchAccounts());
-    setOpenMenuId(null);
+    setIsLoading(true);
+    try {
+      await dispatch(deleteAccount(id)).unwrap();
+      setOpenMenuId(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    dispatch(fetchAccounts());
-    dispatch(getUser());
-  }, []);
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        await dispatch(fetchAccounts()).unwrap();
+        await dispatch(getUser()).unwrap();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, [dispatch]);
 
   useEffect(() => {
     const closeMenu = (e: MouseEvent) => {
@@ -115,7 +138,16 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="pb-6">
+    <div className="pb-6 relative">
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-51">
+          <div className="bg-white p-6 rounded-xl flex flex-col items-center">
+            <div className="w-9 h-9 border-4 border-gray-200 border-t-indigo-600 rounded-full animate-spin mb-4" />
+            <p>Загрузка...</p>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-5 flex justify-between items-center">
           <div>
@@ -138,7 +170,7 @@ export default function Home() {
                 localStorage.clear();
                 navigate("/login");
               }}
-              className="w-9 h-9 cursor-pointer rounded-full bg-gray-200 flex items-center justify-center text-gray-600 hover:bg-indigo-700 hover:text-white"
+              className="w-9 cursor-pointer h-9 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 hover:bg-indigo-700 hover:text-white"
             >
               <LogOut size={20} />
             </button>
@@ -170,7 +202,7 @@ export default function Home() {
                       e.stopPropagation();
                       setOpenMenuId(openMenuId === acc.id ? null : acc.id);
                     }}
-                    className="absolute cursor-pointer top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center bg-gray-100"
+                    className="absolute top-3 right-3 w-7 h-7 cursor-pointer rounded-full flex items-center justify-center bg-gray-100"
                   >
                     <MoreHorizontal size={16} className="text-gray-500" />
                   </button>
@@ -182,7 +214,7 @@ export default function Home() {
                     >
                       <button
                         onClick={(e) => handleEdit(acc.id, e)}
-                        className="block w-full cursor-pointer text-left px-4 py-2 text-sm hover:bg-gray-50"
+                        className="block w-full text-left cursor-pointer px-4 py-2 text-sm hover:bg-gray-50"
                       >
                         Редактировать
                       </button>
@@ -222,9 +254,7 @@ export default function Home() {
               value={accountBalance ? formatBalance(accountBalance) : ""}
               onChange={(e) => {
                 const raw = e.target.value.replace(/\D/g, "");
-                if (!raw) return setAccountBalance(0);
-                if (raw.length > 1 && raw.startsWith("0")) return;
-                setAccountBalance(Number(raw));
+                setAccountBalance(raw ? Number(raw) : 0);
               }}
               placeholder="Баланс счёта"
               inputMode="numeric"
@@ -233,7 +263,7 @@ export default function Home() {
             <select
               value={selectedCurrencyId}
               onChange={(e) => setSelectedCurrencyId(Number(e.target.value))}
-              className="w-full border border-gray-300 outline-none rounded-lg px-3 py-2.5 mb-4 focus:ring-2 focus:ring-indigo-500"
+              className="w-full border border-gray-300 rounded-lg outline-none px-3 py-2.5 mb-4 focus:ring-2 focus:ring-indigo-500"
             >
               {currencies.map((curr) => (
                 <option key={curr.id} value={curr.id}>
@@ -244,14 +274,14 @@ export default function Home() {
             <div className="flex gap-2">
               <button
                 onClick={handleCreateAccount}
-                className="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                className="flex-1 py-2.5 bg-indigo-600 cursor-pointer text-white rounded-lg hover:bg-indigo-700"
                 disabled={!accountName.trim()}
               >
                 Создать
               </button>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="flex-1 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="flex-1 py-2.5 border border-gray-300 cursor-pointer rounded-lg hover:bg-gray-50"
               >
                 Отмена
               </button>
@@ -276,13 +306,13 @@ export default function Home() {
             <div className="flex gap-2">
               <button
                 onClick={handleUpdateAccount}
-                className="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                className="flex-1 py-2.5 bg-indigo-600 cursor-pointer text-white rounded-lg hover:bg-indigo-700"
               >
                 Сохранить
               </button>
               <button
                 onClick={() => setIsEditModalOpen(false)}
-                className="flex-1 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="flex-1 py-2.5 border border-gray-300 cursor-pointer rounded-lg hover:bg-gray-50"
               >
                 Отмена
               </button>

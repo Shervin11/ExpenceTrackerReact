@@ -9,6 +9,6 @@ export default defineConfig({
     host: true,
     port: 5173,
     strictPort: true,
-    allowedHosts: ["tracker.52-221-219-64.nip.io"],
+    allowedHosts: ["https://expense-tracker.ddns.net/"],
   },
 });
