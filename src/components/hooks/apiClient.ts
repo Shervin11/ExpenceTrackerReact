@@ -7,7 +7,7 @@ export const setStore = (s: any) => {
 };
 
 const api = axios.create({
-  baseURL: "http://52.221.219.64/api",
+  baseURL: "https://tracker-api.ddns.net/api",
 });
 
 api.interceptors.request.use((config) => {
