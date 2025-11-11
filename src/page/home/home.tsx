@@ -62,6 +62,7 @@ export default function Home() {
         isDefault: false,
       })
     );
+    await dispatch(fetchAccounts());
     setAccountName("");
     setAccountBalance(0);
     setIsModalOpen(false);
@@ -85,6 +86,7 @@ export default function Home() {
   const handleUpdateAccount = async () => {
     if (!editData?.name.trim()) return;
     await dispatch(editAccount({ ...editData, isDefault: false }));
+    await dispatch(fetchAccounts());
     setIsEditModalOpen(false);
     setEditData(null);
   };
@@ -92,6 +94,7 @@ export default function Home() {
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     await dispatch(deleteAccount(id));
+    await dispatch(fetchAccounts());
     setOpenMenuId(null);
   };
 
