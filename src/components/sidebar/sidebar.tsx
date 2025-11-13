@@ -42,7 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, setIsOpen }) => {
         ]
       : [
           { label: "Счета", icon: <CreditCard size={20} />, path: "/home" },
-          { label: "Отчёты", icon: <BarChart2 size={20} />, path: "#" },
+          { label: "Отчёты", icon: <BarChart2 size={20} />, path: "/reports" },
         ];
 
   useEffect(() => {

@@ -5,14 +5,16 @@ import {
   getImportTemplate,
   importTransactions,
   exportTransactions,
+  getTransactions,
 } from "../../features/transactionSlice/transactionSlice";
+import type { AppDispatch } from "../../store/store";
 
 interface ImportExportModalProps {
   onClose: () => void;
 }
 
 export default function ImportExportModal({ onClose }: ImportExportModalProps) {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
 
   const [mode, setMode] = useState<"import" | "export" | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -30,6 +32,7 @@ export default function ImportExportModal({ onClose }: ImportExportModalProps) {
       return;
     }
     await dispatch(importTransactions(file));
+    await dispatch(getTransactions());
     setFile(null);
     onClose();
   };
@@ -46,6 +49,7 @@ export default function ImportExportModal({ onClose }: ImportExportModalProps) {
         DocumentExtensionId: exportFormat,
       })
     );
+    await dispatch(getTransactions());
     onClose();
   };
 

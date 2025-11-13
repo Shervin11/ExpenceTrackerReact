@@ -1,9 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
+import { setStore } from "../components/hooks/apiClient";
 import authReducer from "../features/authSlice/authSlice";
 import accountReducer from "../features/accountSlice/accountSlice";
 import userReducer from "../features/userSlice/userSlice";
 import transactionReducer from "../features/transactionSlice/transactionSlice";
-import { setStore } from "../components/hooks/apiClient";
+import reportsReducer from "../features/reportsSlice/reportsSlice";
 import autoTransactionReducer from "../features/autoTransactionSlice/autoTransactionSlice";
 
 export const store = configureStore({
@@ -13,6 +14,7 @@ export const store = configureStore({
     transaction: transactionReducer,
     user: userReducer,
     autoTransaction: autoTransactionReducer,
+    reports: reportsReducer,
   },
 });
 
