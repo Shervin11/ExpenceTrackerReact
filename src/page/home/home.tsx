@@ -11,7 +11,7 @@ import {
   type Account,
 } from "../../features/accountSlice/accountSlice";
 import type { AppDispatch, RootState } from "../../store/store";
-import { MoreHorizontal, LogOut, Plus } from "lucide-react";
+import { MoreHorizontal, Plus } from "lucide-react";
 import { getUser } from "../../features/userSlice/userSlice";
 
 interface Currency {
@@ -70,7 +70,7 @@ export default function Home() {
       })
     ).unwrap();
 
-    navigate(`/transactions/${id}`);
+    navigate("/transactions");
   };
 
   const handleEdit = (id: string, e: React.MouseEvent) => {
@@ -152,7 +152,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="pb-6 relative">
+    <div className="transition-all duration-300">
       {isLoading && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-51">
           <div className="bg-white p-6 rounded-xl flex flex-col items-center">
@@ -162,7 +162,7 @@ export default function Home() {
         </div>
       )}
 
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-5 flex justify-between items-center">
           <div>
             <h1 className="text-xl font-semibold text-gray-900">
@@ -172,21 +172,12 @@ export default function Home() {
               Управляйте своими финансами
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div>
             <button
               onClick={openModal}
               className="w-9 h-9 cursor-pointer rounded-full bg-indigo-600 flex items-center justify-center text-white hover:bg-indigo-700"
             >
               <Plus size={20} />
-            </button>
-            <button
-              onClick={() => {
-                localStorage.clear();
-                navigate("/login");
-              }}
-              className="w-9 cursor-pointer h-9 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 hover:bg-indigo-700 hover:text-white"
-            >
-              <LogOut size={20} />
             </button>
           </div>
         </div>

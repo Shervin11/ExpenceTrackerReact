@@ -4,6 +4,7 @@ import accountReducer from "../features/accountSlice/accountSlice";
 import userReducer from "../features/userSlice/userSlice";
 import transactionReducer from "../features/transactionSlice/transactionSlice";
 import { setStore } from "../components/hooks/apiClient";
+import autoTransactionReducer from "../features/autoTransactionSlice/autoTransactionSlice";
 
 export const store = configureStore({
   reducer: {
@@ -11,6 +12,7 @@ export const store = configureStore({
     account: accountReducer,
     transaction: transactionReducer,
     user: userReducer,
+    autoTransaction: autoTransactionReducer,
   },
 });
 

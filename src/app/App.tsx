@@ -6,6 +6,8 @@ import Register from "../page/register/register";
 import Login from "../page/login/login";
 import Home from "../page/home/home";
 import Transaction from "../page/transaction/transaction";
+import AutoTransaction from "../page/autoTransaction/autoTransaction";
+import { ProtectedLayout } from "../components/ProtectedLayout/ProtectedLayout";
 
 const App = () => {
   const token = useSelector((state: RootState) => state.auth.accessToken);
@@ -23,16 +25,42 @@ const App = () => {
       <Routes>
         <Route
           path="/home"
-          element={token ? <Home /> : <Navigate to="/login" replace />}
+          element={
+            token ? (
+              <ProtectedLayout>
+                <Home />
+              </ProtectedLayout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
         />
         <Route
-          path="/transactions/:accountId"
-          element={token ? <Transaction /> : <Navigate to="/login" replace />}
+          path="/transactions"
+          element={
+            token ? (
+              <ProtectedLayout>
+                <Transaction />
+              </ProtectedLayout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
         />
-
+        <Route
+          path="/auto-transaction"
+          element={
+            token ? (
+              <ProtectedLayout>
+                <AutoTransaction />
+              </ProtectedLayout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-
         <Route
           path="/"
           element={

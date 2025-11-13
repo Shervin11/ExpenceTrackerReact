@@ -2,6 +2,7 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from "../../components/hooks/apiClient";
 
 export interface CreateTransactionDto {
+  id: string;
   name: string;
   amount: number;
   description: string;
@@ -34,18 +35,109 @@ const initialState: TransactionState = {
   error: null,
 };
 
+export const getImportTemplate = createAsyncThunk(
+  "transaction/getImportTemplate",
+  async (DocumentExtensionId: number) => {
+    const res = await api.get(
+      `/Transaction/get-import-template?DocumentExtensionId=${DocumentExtensionId}`,
+      {
+        responseType: "blob",
+      }
+    );
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `template.${DocumentExtensionId === 1 ? "xlsx" : "csv"}`
+    );
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+);
+
+export const importTransactions = createAsyncThunk(
+  "transaction/importTransactions",
+  async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    await api.post("/Transaction/import-transactions", formData);
+  }
+);
+
+export const exportTransactions = createAsyncThunk(
+  "transaction/exportTransactions",
+  async (params: {
+    DateFrom?: string;
+    DateTo?: string;
+    DocumentExtensionId: number;
+  }) => {
+    const query = new URLSearchParams();
+    if (params.DateFrom) query.append("DateFrom", params.DateFrom);
+    if (params.DateTo) query.append("DateTo", params.DateTo);
+    query.append("DocumentExtensionId", params.DocumentExtensionId.toString());
+
+    const res = await api.get(
+      `/Transaction/export-transactions?${query.toString()}`,
+      {
+        responseType: "blob",
+      }
+    );
+
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `transactions.${params.DocumentExtensionId === 1 ? "xlsx" : "csv"}`
+    );
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+);
+
 export const getTransactions = createAsyncThunk<
   Transaction[],
   void,
   { rejectValue: string }
 >("transaction/getTransactions", async (_, { rejectWithValue }) => {
   try {
-    const { data } = await api.get("/Transaction/get-all-account-transactions");
+    const { data } = await api.get(
+      "/Transaction/get-all-account-transactions?PageSize=1000"
+    );
     return data.data?.[0]?.items ?? [];
   } catch {
     return rejectWithValue("Ошибка сети");
   }
 });
+
+export async function downloadTransactionFile(documentExtensionId: number) {
+  try {
+    const response = await api.get(
+      `/Transaction/export-transactions?DocumentExtensionId=${documentExtensionId}`,
+      { responseType: "blob" }
+    );
+
+    const blob = new Blob([response.data]);
+    const url = window.URL.createObjectURL(blob);
+
+    const fileName =
+      documentExtensionId === 1 ? "transactions.xlsx" : "transactions.csv";
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Ошибка при скачивании файла:", error);
+  }
+}
 
 export const filterTransactions = createAsyncThunk<
   Transaction[],

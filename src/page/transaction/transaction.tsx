@@ -7,6 +7,7 @@ import {
   Trash2,
   Edit,
   Search,
+  Import,
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../store/store";
@@ -17,30 +18,26 @@ import {
   type CreateTransactionDto,
   editTransaction,
   filterTransactions,
+  type Transaction,
 } from "../../features/transactionSlice/transactionSlice";
-import { ArrowLeftIcon } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import ImportExportModal from "../../components/ExportModal/ExportModal";
 
 export default function Transaction() {
   const dispatch = useDispatch<AppDispatch>();
   const { transactions: rawTransactions, loading } = useSelector(
     (state: RootState) => state.transaction
   );
-  const navigate = useNavigate();
 
   const [selected, setSelected] = useState<string[]>([]);
   const [isSelecting, setIsSelecting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editData, setEditData] = useState<{
-    id: string;
-    name: string;
-    description: string;
-    categoryId: null;
-  } | null>(null);
+  const [editData, setEditData] = useState<CreateTransactionDto | null>(null);
 
   const [form, setForm] = useState<CreateTransactionDto>({
+    id: "",
     name: "",
     amount: 0,
     description: "",
@@ -76,8 +73,7 @@ export default function Transaction() {
   };
 
   const handleDeleteSelected = async () => {
-    if (selected.length === 0) return;
-
+    if (!selected.length) return;
     await dispatch(deleteTransactions(selected)).unwrap();
     setSelected([]);
     setIsSelecting(false);
@@ -113,11 +109,14 @@ export default function Transaction() {
     }
   };
 
-  const openEditModal = (tx: any) => {
+  const openEditModal = (tx: Transaction) => {
     setEditData({
       id: tx.id,
       name: tx.name,
       description: tx.description || "",
+      amount: tx.amount,
+      transactionTypeId: tx.type?.id || 2,
+      date: tx.date,
       categoryId: null,
     });
     setIsEditModalOpen(true);
@@ -134,6 +133,12 @@ export default function Transaction() {
     } catch {
       alert("Ошибка при редактировании транзакции");
     }
+  };
+
+  const truncateDescription = (description: string, maxLength = 20) => {
+    return description.length <= maxLength
+      ? description
+      : description.slice(0, maxLength) + "...";
   };
 
   const totalIncome = transactions
@@ -159,15 +164,7 @@ export default function Transaction() {
 
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate("/home")}
-              className="p-2 rounded-full bg-indigo-100 cursor-pointer text-indigo-600 hover:bg-indigo-200"
-            >
-              <ArrowLeftIcon size={18} />
-            </button>
-            <p className="font-medium text-lg">Транзакции счёта</p>
-          </div>
+          <p className="font-medium md:text-xl">Транзакции счёта</p>
           <div className="flex items-center gap-3">
             {isSelecting ? (
               <>
@@ -205,9 +202,15 @@ export default function Transaction() {
                 </button>
                 <button
                   onClick={() => setIsFilterModalOpen(true)}
-                  className="p-2 rounded-full bg-indigo-100 cursor-pointer text-indigo-600 hover:bg-indigo-200"
+                  className="p-2 rounded-full cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700"
                 >
                   <Search size={18} />
+                </button>
+                <button
+                  onClick={() => setIsImportExportOpen(true)}
+                  className="p-2 rounded-full cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700"
+                >
+                  <Import size={18} />
                 </button>
               </>
             )}
@@ -217,10 +220,14 @@ export default function Transaction() {
 
       <div className="max-w-4xl mx-auto px-4 pt-6 pb-4">
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
-          <div className="flex gap-3 items-center justify-between">
+          <div className="flex flex-col md:flex-row gap-3 md:items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Баланс</p>
-              <p className="md:text-2xl font-bold text-gray-800">
+              <p
+                className={`md:text-2xl font-bold text-gray-800 ${
+                  balance < 0 ? "text-rose-600" : ""
+                }`}
+              >
                 {transactions[0]?.currency?.name} {formatNumber(balance)}
               </p>
             </div>
@@ -243,20 +250,22 @@ export default function Transaction() {
           transactions.map((tx) => (
             <div
               key={tx.id}
-              className={`bg-white rounded-2xl p-5 shadow-md border mb-4 transition ${
+              className={`bg-white rounded-2xl cursor-pointer p-5 shadow-md border mb-4 transition ${
                 selected.includes(tx.id)
                   ? "border-indigo-400 shadow-md"
                   : "border-gray-200 hover:shadow-lg"
               }`}
-              onClick={() => isSelecting && handleSelect(tx.id)}
+              onClick={() => {
+                if (isSelecting) return handleSelect(tx.id);
+              }}
             >
               <div className="flex md:gap-3 gap-2 justify-between items-start">
                 <div className="flex flex-col gap-1">
                   <p className="font-bold text-gray-800 md:text-lg">
                     {tx.name}
                   </p>
-                  <p className="text-sm text-gray-500">
-                    {tx.description || "Без описания"}
+                  <p className="text-gray-700">
+                    {truncateDescription(tx.description || "Без описания")}
                   </p>
                   <p className="text-xs text-gray-400">
                     {new Date(tx.date).toLocaleDateString("ru-RU")}
@@ -406,6 +415,10 @@ export default function Transaction() {
         </div>
       )}
 
+      {isImportExportOpen && (
+        <ImportExportModal onClose={() => setIsImportExportOpen(false)} />
+      )}
+
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 relative">
@@ -428,10 +441,7 @@ export default function Transaction() {
                 type="text"
                 value={formatNumber(form.amount)}
                 onChange={(e) =>
-                  setForm({
-                    ...form,
-                    amount: parseNumberInput(e.target.value),
-                  })
+                  setForm({ ...form, amount: parseNumberInput(e.target.value) })
                 }
                 placeholder="Сумма"
                 className="w-full border border-gray-300 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-400"
